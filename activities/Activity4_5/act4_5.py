@@ -3,6 +3,7 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import random
+import os
 
 path = "../data/GSE64881_segmentation_at_30000bp.passqc.multibam.txt"
 df2 = pd.read_csv(path, sep='\t') #hist1 region
@@ -307,11 +308,15 @@ def cluster_medoids(norm_dist_matrix: pd.DataFrame, original_centers: list[str],
         
         #new centers
         new_centers = []
-        for cluster in clusters:
-            new_centers.append(find_center(cluster, norm_dist_matrix))
+        for i, cluster in enumerate(clusters): #computes the new medoid for each cluster
+            c = find_center(cluster, norm_dist_matrix) #c should have min. avg. dissimilarity
+            if c is None: #handles empty cluster, keeps previous center 
+                c = centers[i]
+            new_centers.append(c)
         
         new_clusters = assign_to_k_clusters(norm_dist_matrix[new_centers], new_centers) #reclusters based on new centers
-        wc_var = within_cluster_var(new_clusters, new_centers, norm_dist_matrix) #gets the within cluster var for the new clusters
+
+        # wc_var = within_cluster_var(new_clusters, new_centers, norm_dist_matrix) #gets the within cluster var for the new clusters
         
         #output --removed for the FEATURE SELECTION - ACTIVITY1
         # print("\nIteration:", it+1)
@@ -319,6 +324,8 @@ def cluster_medoids(norm_dist_matrix: pd.DataFrame, original_centers: list[str],
         # print(new_centers, '\n')
 
         if set(new_centers) == set(centers):
+            centers = new_centers
+            clusters = new_clusters
             break
         
         
@@ -326,7 +333,7 @@ def cluster_medoids(norm_dist_matrix: pd.DataFrame, original_centers: list[str],
         centers = new_centers
         clusters = new_clusters
     
-    return new_centers, new_clusters #returns the updated centers and clusters         
+    return centers, clusters #returns the updated centers and clusters         
  
 
 
@@ -401,5 +408,47 @@ for x in range(1000):
 print("Final Centers:", best_centers)
 print("Lowest Within Cluster Variance:",best_var)
         
-        
+
+
+###### Heat maps ######
+
+window_labels = df2.apply(
+    lambda r: f"{r['chrom']}:{r['start']}-{r['stop']}", axis=1
+)
+
+for i, cluster in enumerate(best_clusters, start=1):
+
     
+    cluster_matrix = df2[cluster].T
+    cluster_matrix.columns = window_labels
+
+    plt.figure(figsize=(14, 8))
+
+    sns.heatmap(
+        cluster_matrix,
+        cmap="viridis",
+        vmin=0,
+        vmax=1,
+        square=False,
+        xticklabels=20,   # show every 20th genomic window label
+        yticklabels=True, # show all NP labels
+        cbar_kws={ 
+            "label": "Segregation (0/1)",
+            "ticks": [0, 1] 
+        }
+    )
+
+    plt.title(f"Cluster {i} Heatmap (Best Clustering)")
+    plt.ylabel("NPs")
+    plt.xlabel("Genomic Windows")
+
+    plt.xticks(rotation=90, fontsize=6)
+    plt.yticks(rotation=0, fontsize=8)
+
+    plt.tight_layout()
+    plt.savefig(
+        f"../heatmaps/best_cluster_{i}_heatmap.png",
+        dpi=300,
+        bbox_inches="tight"
+    )
+    plt.close()
