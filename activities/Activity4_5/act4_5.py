@@ -79,7 +79,7 @@ dist_matrix = 1 - jaccard_matrix #makes the dist_matrix
 # plt.tight_layout()
 
 # plt.savefig(
-#     "jaccard_index_heatmap.png",
+#     "../heatmaps/jaccard_index_heatmap.png",
 #     dpi=300,
 #     bbox_inches="tight"
 # )
@@ -103,7 +103,7 @@ dist_matrix = 1 - jaccard_matrix #makes the dist_matrix
 # plt.tight_layout()
 
 # plt.savefig(
-#     "jaccard_distance_heatmap.png",
+#     "../heatmaps/jaccard_distance_heatmap.png",
 #     dpi=300,
 #     bbox_inches="tight"
 # )
@@ -144,7 +144,7 @@ for a in range(len(np_cols)):
                 
         denom = min(num_ones_a,num_ones_b)
         
-        if ((denom) > 0): #makes sure its not zero to avoid division by zero
+        if ((denom) > 0): #makes sure its not zero to avoid division by zero    
             jaccard_sim = m_11 / denom
         else:
             jaccard_sim = 0
@@ -217,7 +217,7 @@ print("Cluster 3:",len(clusters[2]))
 # plt.tight_layout()
 
 # plt.savefig(
-#     "norm_jaccard_index_heatmap.png",
+#     "../heatmaps/norm_jaccard_index_heatmap.png",
 #     dpi=300,
 #     bbox_inches="tight"
 # )
@@ -245,7 +245,7 @@ print("Cluster 3:",len(clusters[2]))
 # plt.tight_layout()
 
 # plt.savefig(
-#     "norm_distance_heatmap.png",
+#     "../heatmaps/norm_distance_heatmap.png",
 #     dpi=300,
 #     bbox_inches="tight"
 # )
@@ -262,8 +262,10 @@ print("Cluster 3:",len(clusters[2]))
 
 #finds and returns the np in a cluster that has the minimum disssimilarity
 def find_center(cluster: list[str], norm_dist_matrix: pd.DataFrame) -> str:
+    if len(cluster) == 0:
+        return None
 
-    #best_np = cluster[0]
+    best_np = cluster[0]
     best_avg_diss = float("inf")
     
     for np1 in cluster: #loops through all of the nps
@@ -277,30 +279,6 @@ def find_center(cluster: list[str], norm_dist_matrix: pd.DataFrame) -> str:
             best_np = np1
             
     return best_np
-    
-    
-    
-#calculates the variance in a cluster  
-# def cluster_var(cluster: list[str], center, norm_dist_matrix: pd.DataFrame):
-#     if len(cluster) == 0:
-#         return 0
-    
-#     distances = []
-    
-#     for np_name in cluster:
-#         d = norm_dist_matrix.loc[np_name, center]
-#         distances.append(d)
-    
-#     avg = sum(distances) / len(distances)
-    
-    
-#     var = 0
-#     for d in distances:
-#         var += (d - avg) ** 2
-    
-#     var = var / len(distances)
-
-#     return var
 
 
 #sums up the distances between all points in a cluster to the center, and sums for all clusters
@@ -308,6 +286,9 @@ def within_cluster_var(clusters: list[list[str]], centers: list[str], norm_dist_
     total = 0.0 #the total distances from centers, within cluster variation
     
     for i, cluster in enumerate(clusters): #goes through all of the clusters
+        if len(cluster) == 0:
+            continue
+
         cent = centers[i]
         total += norm_dist_matrix.loc[cluster, cent].sum() #all of the nps at the cluster center column summed
 
@@ -332,19 +313,29 @@ def cluster_medoids(norm_dist_matrix: pd.DataFrame, original_centers: list[str],
         new_clusters = assign_to_k_clusters(norm_dist_matrix[new_centers], new_centers) #reclusters based on new centers
         wc_var = within_cluster_var(new_clusters, new_centers, norm_dist_matrix) #gets the within cluster var for the new clusters
         
-        #output
-        print("\nIteration:", it+1)
-        print("Variation:",wc_var)
-        print(new_centers, '\n')
+        #output --removed for the FEATURE SELECTION - ACTIVITY1
+        # print("\nIteration:", it+1)
+        # print("Variation:",wc_var)
+        # print(new_centers, '\n')
 
-        if new_centers == centers:
+        if set(new_centers) == set(centers):
             break
+        
+        
         
         centers = new_centers
         clusters = new_clusters
     
     return new_centers, new_clusters #returns the updated centers and clusters         
  
+
+
+
+
+
+
+
+
 
 
 var_for_original = within_cluster_var(clusters, three_points, norm_distance_matrix)
@@ -368,3 +359,47 @@ print("Cluster 2:",len(clusters[1]))
 print("Cluster 3:",len(clusters[2]))
 
 #############------ Cluster Part 2. -------###############
+
+
+
+
+#############------ FEATURE SELECTION - ACTIVITY1 -------###############
+
+
+def sample_valid_centers(norm_dist_matrix: pd.DataFrame, k: int = 3, max_tries: int = 10000):
+    points = list(norm_dist_matrix.index)
+
+    for _ in range(max_tries):
+        centers = list(np.random.choice(points, size=k, replace=False))
+        clusters = assign_to_k_clusters(norm_dist_matrix[centers], centers)
+
+        if all(len(c) > 0 for c in clusters):
+            return centers, clusters
+
+    raise RuntimeError("Couldn't find an initialization with no empty clusters.")
+
+
+best_centers = []
+best_clusters = []
+best_var = 10000
+
+for x in range(1000):
+    print("Iteration:",x+1)
+    three_points, clusters = sample_valid_centers(norm_distance_matrix) #grabbing three random points
+    centers, clusters = cluster_medoids(norm_distance_matrix, three_points) #repeadely clusters the three points until the centers are unchanging
+
+    wc_var = within_cluster_var(clusters, centers, norm_distance_matrix)
+    
+    if wc_var < best_var:
+        best_var = wc_var
+        best_centers = centers
+        best_clusters = clusters
+        print("Centers:",centers)
+        print("Variance:",best_var)
+
+
+print("Final Centers:", best_centers)
+print("Lowest Within Cluster Variance:",best_var)
+        
+        
+    
