@@ -18,14 +18,29 @@ print("Original Three Points:",three_points)
 one_run = run_kmedoids(norm_distance_matrix, three_points)
 
 print("Variation for original points:", one_run["init_var"])
-print("Final Total Within Cluster Variation:", one_run["var"])
-print("Final Centers:", one_run["centers"])
-print("Cluster 1:", len(one_run["clusters"][0]))
-print("Cluster 2:", len(one_run["clusters"][1]))
-print("Cluster 3:", len(one_run["clusters"][2]))
-
 
 best_centers, best_clusters, best_var = best_of_n_runs(norm_distance_matrix)
 
 print("Final Centers:", best_centers)
 print("Lowest Within Cluster Variance:", best_var)
+
+
+############## --- ACTIVITY 2 --- ###############
+feat_table_path = "./data/Hist1_region_features.csv"
+feat_table = pd.read_csv(feat_table_path)
+
+for cluster in best_clusters:
+    for np in cluster:
+        for window in df.loc[np]:
+            if feat_table.loc[window][df] == 1 and np[window] == 1:
+                count += 1
+
+
+
+
+############## --- ACTIVITY 2 --- ###############
+
+
+
+
+
