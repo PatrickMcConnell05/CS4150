@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 
@@ -336,4 +337,102 @@ def best_of_n_runs(norm_dist_matrix, n_runs=1000, k=3):
             print("Centers:",best_centers)
 
     return best_centers, best_clusters, best_var
+
+
+
+######## ACTIVITY 2 FUNCTIONS ###########
+
+#grabs the feat table cvs and returns
+def load_features(feat_path):
+    feat = pd.read_csv(feat_path) #takes in the feature table
+
+    #puts the chrom name in the first index
+    name_split = feat["name"].str.split(":", expand=True) 
+
+    #splits the 21690000 and 21720000 parts of "21690000-21720000" apart
+    range_split = name_split[1].str.split("-", expand=True)
+
+    feat["chrom"] = name_split[0]
+    feat["start"] = range_split[0].astype(int)
+    feat["stop"]  = range_split[1].astype(int)
+
+    return feat
+
+#computes Hist1 and LAD percentages per cluster
+def compute_feature_percentages(df, feat, clusters):
+    #df = segregation table (with NP columns)
+    #feat = feature table aligned to df (must have Hist1 and LAD columns)
+    #clusters = list of clusters (each cluster is a list of NP names)
+    results = []
+
+    for cluster_id, cluster in enumerate(clusters, start=1):
+
+        for np_name in cluster:
+
+            total_windows_in_np = 0
+            hist1_count = 0
+            lad_count = 0
+
+            for i in range(len(df)):
+
+                #if this window is present in the NP
+                if df[np_name].iat[i] == 1:
+
+                    total_windows_in_np += 1
+
+                    #check Hist1
+                    if feat["Hist1"].iat[i] == 1:
+                        hist1_count += 1
+
+                    #check LAD
+                    if feat["LAD"].iat[i] == 1:
+                        lad_count += 1
+
+            #avoid division by zero
+            if total_windows_in_np > 0:
+                hist1_pct = 100 * (hist1_count / total_windows_in_np)
+                lad_pct = 100 * (lad_count / total_windows_in_np)
+            else:
+                hist1_pct = 0
+                lad_pct = 0
+
+            #puts results into a df
+            results.append({ 
+                "cluster": cluster_id,
+                "NP": np_name,
+                "Hist1_pct": hist1_pct,
+                "LAD_pct": lad_pct
+            })
+
+    return pd.DataFrame(results)
+
+def plot_feature_boxplots(results_df, value_col, ylabel, title, outpath):
+
+    data = [
+        results_df[results_df["cluster"] == 1][value_col],
+        results_df[results_df["cluster"] == 2][value_col],
+        results_df[results_df["cluster"] == 3][value_col]
+    ]
+
+    plt.figure(figsize=(8,5))
+    plt.boxplot(data, labels=["Cluster 1", "Cluster 2", "Cluster 3"])
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.tight_layout()
+    plt.savefig(outpath, dpi=300, bbox_inches="tight")
+    plt.close()
+
+
+
+
+
+
+
+
+
+
+
+######## ACTIVITY 2 FUNCTIONS ###########
+
+
 
