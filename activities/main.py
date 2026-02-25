@@ -75,117 +75,70 @@ plot_feature_boxplots(
 
 ############## --- ACTIVITY 3 --- ###############
 
-smallest = 100000000000
-largest = 0
+# 1) compute windows-per-NP
+df2 = df[np_cols].copy()
 
-for col in df.columns[3:]:
-    values = df[col] #sets values to be a single column
-    count = (values > 0).sum() #gets the number of 1s in a col
-    if(count < smallest):
-        smallest = count
-    if(count > largest):
-        largest = count
+windows_per_np = {}
+for col in df2.columns:
+    windows_per_np[col] = int((df2[col] > 0).sum())
 
-# print("Smallest Number of Windows:", smallest)
-# print("Largest Number of Windows:", largest)
+smallest = min(windows_per_np.values())
+largest  = max(windows_per_np.values())
 
-group_size = (largest - smallest) / 5
-# print(group_size)
+radial_pos = {}
+if largest == smallest:
+    radial_pos = {np: 3 for np in windows_per_np}  # or 1, but 3 is more “neutral”
+else:
+    group_size = (largest - smallest) / 5.0
+    for np, freq in windows_per_np.items():
+        if freq <= smallest + group_size:
+            radial_pos[np] = 1
+        elif freq <= smallest + 2*group_size:
+            radial_pos[np] = 2
+        elif freq <= smallest + 3*group_size:
+            radial_pos[np] = 3
+        elif freq <= smallest + 4*group_size:
+            radial_pos[np] = 4
+        else:
+            radial_pos[np] = 5
+
+labels = [
+    "1 Strongly apical",
+    "2 Somewhat apical",
+    "3 Neither",
+    "4 Somewhat equatorial",
+    "5 Strongly equatorial"
+]
 
 
-#6.) work from act2.py --meant to pair names and values up
+os.makedirs("./bar_graphs", exist_ok=True) #nsures that the directory exists for saving the bar graphs
 
-np_names = df.columns.values[3:]
-
-df2 = df.loc[:, df.columns.intersection(np_names)].copy() #this creates the dataframe (df3) with the nps that had at least 1 window in the hist1 section
-# print(df3)
-
-count = 0
-
-arr_windows_per_np = []
-
-
-for col in df2.columns: #goes through all of the columns
-    values = df2[col] #assigns a col to values
-    count += (values > 0).sum() #sums the values
-    arr_windows_per_np.append(count) #adds the 
-    count = 0
-
-    
-pairing = dict(zip(np_names, arr_windows_per_np)) #key value pairing of the np names and the num of windows present
-sorted_pairings = dict(sorted(pairing.items(), key=lambda item: item[1]))
-
-strongly_apical = []
-somewhat_apical = []
-neither = []
-somewhat_equatorial = []
-strong_equatorial = []
-
-pairs = list(sorted_pairings.items())
-
-for np, frequency in pairs:
-    if frequency <= group_size:
-        strongly_apical.append(((np, frequency)))
-    elif frequency <= (group_size * 2):
-        somewhat_apical.append((np,frequency))
-    elif frequency <= (group_size * 3):
-        neither.append((np,frequency))
-    elif frequency <= (group_size * 4):
-        somewhat_equatorial.append((np,frequency))
-    # elif frequency <= (group_size * 5):
-    #     strong_equatorial.append((np,frequency))
-    else:
-        strong_equatorial.append((np,frequency))
-        
-
-for index, cluster in enumerate(best_clusters):
-    
-    strongly_apical_count = 0
-    somewhat_apical_count = 0
-    neither_count = 0
-    somewhat_equatorial_count = 0
-    strong_equatorial_count = 0
+# 3) for each cluster, count + percentage + plot
+for ci, cluster in enumerate(best_clusters, start=1):
+    counts = [0, 0, 0, 0, 0]
 
     for np_name in cluster:
-        
-        for i in range(len(cluster)):
-            # if cluster[np_name] in strongly_apical:
-            #     strongly_apical_count += 1
-            # elif cluster[np_name] in somewhat_apical:
-            #     somewhat_apical += 1
-            # elif cluster[np_name] in neither:
-            #     neither_count += 1
-            # elif cluster[np_name] in somewhat_equatorial:
-            #     somewhat_equatorial_count += 1
-            # elif cluster[np_name] in strong_equatorial:
-            #     strong_equatorial_count += 1
-            if np_name in dict(strongly_apical).keys():
-                strongly_apical_count += 1
-            elif np_name in dict(somewhat_apical).keys():
-                somewhat_apical_count += 1
-            elif np_name in dict(neither).keys():
-                neither_count += 1
-            elif np_name in dict(somewhat_equatorial).keys():
-                somewhat_equatorial_count += 1
-            elif np_name in dict(strong_equatorial).keys():
-                strong_equatorial_count += 1
-    
-    strongly_aplical_percentage = strongly_apical_count / len(cluster)
-    somewhat_apical_percentage = somewhat_apical_count / len(cluster)
-    neither_percentage = neither_count / len(cluster)
-    somewhat_equatorial_percentage = somewhat_equatorial_count / len(cluster)
-    strong_equatorial_percentage = strong_equatorial_count / len(cluster)
-    
-    plt.figure(figsize=(10,6))
-    plt.bar("Strongly Apical", strongly_aplical_percentage)
-    plt.bar("Somewhat Apical", somewhat_apical_percentage)
-    plt.bar("Neither", neither_percentage)
-    plt.bar("Somewhat Equatorial", somewhat_equatorial_percentage)
-    plt.bar("Strongly Equatorial", strong_equatorial_percentage)
-    plt.title(f"Radial Position Distribution for Cluster {index}")
-    plt.ylabel("Percentage of NPs")
-    plt.savefig(f"./bar_graphs/cluster_{index}_radial_distribution.png")
+        rp = radial_pos.get(np_name, None)
+        if rp is not None:
+            counts[rp - 1] += 1
+
+    total = sum(counts) if sum(counts) > 0 else 1
+    perc = [c / total for c in counts]
+
+    # Bar height should be NUMBER of NPs (per assignment)
+    plt.figure(figsize=(10, 6))
+    plt.bar(labels, counts)
+    plt.title(f"Radial Position Counts for Cluster {ci}")
+    plt.ylabel("Number of NPs")
+    plt.xticks(rotation=20, ha="right")
+    plt.tight_layout()
+    plt.savefig(f"./bar_graphs/cluster_{ci}_radial_counts.png")
     plt.close()
+
+    # optional: print percentages for your writeup
+    print(f"\nCluster {ci} (n={total}) radial %:")
+    for lab, p in zip(labels, perc):
+        print(f"  {lab}: {p*100:.1f}%")
         
 
 
