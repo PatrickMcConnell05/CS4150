@@ -452,10 +452,11 @@ def compute_all_feat_stats(df, feat, clusters, desired_feats: list[str]):
                 total_windows = 0
                 
                 for i in range(len(df)):
+                    # total_windows += 1
                     if df.iloc[i][np_name] == 1:
                         total_windows += 1
-                        if feat.iloc[i][feature] == 1:
-                            feature_count += 1
+                    if df.iloc[i][np_name] == 1 and feat.iloc[i][feature] == 1:
+                        feature_count += 1
                 if total_windows > 0:
                     feat_percent = (feature_count / total_windows) * 100
                 else:
@@ -492,7 +493,8 @@ def plot_radar(cluster_id, row):
 
     ax.set_xticks(angles[:-1])
     ax.set_xticklabels(features)
-    ax.set_ylim(0, 100)
+    y_max = max(values)
+    ax.set_ylim(0, y_max)
 
     ax.set_title(f"Cluster {cluster_id} Feature Profile")
     plt.tight_layout()
