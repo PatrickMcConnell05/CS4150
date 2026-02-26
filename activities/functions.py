@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 
 
@@ -358,8 +359,9 @@ def load_features(feat_path):
 
     return feat
 
-#computes Hist1 and LAD percentages per cluster
+#computes the Hist1 and LAD percentages for each NP in each cluster, returns a df with cluster, NP, Hist1_pct, and LAD_pct columns
 def compute_feature_percentages(df, feat, clusters):
+#computes Hist1 and LAD percentages per cluster
     #df = segregation table (with NP columns)
     #feat = feature table aligned to df (must have Hist1 and LAD columns)
     #clusters = list of clusters (each cluster is a list of NP names)
@@ -434,5 +436,74 @@ def plot_feature_boxplots(results_df, value_col, ylabel, title, outpath):
 
 ######## ACTIVITY 2 FUNCTIONS ###########
 
+
+
+######## ACTIVITY 4 FUNCTIONS ###########
+
+#computes the percentage of each feature for each NP in each cluster, returns a df with cluster, NP, feature, and percent columns
+def compute_all_feat_stats(df, feat, clusters, desired_feats: list[str]):
+    
+    results = []
+    
+    for index, cluster in enumerate(clusters, start=1):
+        for np_name in cluster:
+            for feature in desired_feats:
+                feature_count = 0
+                total_windows = 0
+                
+                for i in range(len(df)):
+                    if df.iloc[i][np_name] == 1:
+                        total_windows += 1
+                        if feat.iloc[i][feature] == 1:
+                            feature_count += 1
+                if total_windows > 0:
+                    feat_percent = (feature_count / total_windows) * 100
+                else:
+                    feat_percent = 0
+
+                    #puts results into a df
+                results.append({ 
+                    "cluster": index,
+                    "NP": np_name,
+                    "feature": feature,
+                    "percent": feat_percent #percent is the percent of windows present in that np have features matching the feature in the feature table
+
+                })
+
+    return pd.DataFrame(results)
+
+
+#creates radar chart for each cluster showing the average percent for each feature in that cluster
+#useful website: https://medium.com/top-python-libraries/how-to-draw-radar-chart-in-python-3f56e52bcb17
+def plot_radar(cluster_id, row):
+    features = row.index.tolist()
+    values = row.values.tolist()
+
+    angles = np.linspace(0, 2*np.pi, len(features), endpoint=False).tolist()
+
+    #close circle
+    values += values[:1]
+    angles += angles[:1]
+
+
+    fig, ax = plt.subplots(figsize=(8,8), subplot_kw=dict(polar=True))
+    ax.plot(angles, values)
+    ax.fill(angles, values, alpha=0.15)
+
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(features)
+    ax.set_ylim(0, 100)
+
+    ax.set_title(f"Cluster {cluster_id} Feature Profile")
+    plt.tight_layout()
+
+    os.makedirs("./radar_charts", exist_ok=True)
+    plt.savefig(f"./radar_charts/cluster_{cluster_id}_radar.png")
+    plt.close()
+                
+        
+
+
+######## ACTIVITY 4 FUNCTIONS ###########
 
 
