@@ -146,9 +146,9 @@ def sample_valid_centers(norm_dist_matrix: pd.DataFrame, k: int = 3, max_tries: 
 
 
 
-
+#filters the data and loads it in, returning the df and the list of NP columns, removing any NP columns that have no windows present (all zeros)
+#and removing the first three columns (chrom, start, stop) and keeping just the hist1 region (chr13 range we used)
 def load_and_filter(path):
-    # loads the file and keeps just the hist1 region (chr13 range we used)
     df = pd.read_csv(path, sep="\t")
 
     df = df[(df["chrom"] == "chr13") &
@@ -507,5 +507,70 @@ def plot_radar(cluster_id, row):
 
 
 ######## ACTIVITY 4 FUNCTIONS ###########
+
+
+############## --- co-segregation functions --- ###############
+
+#calculates the detection frequency for a given window (the fraction of NPs that have that window)
+def calc_detection_freq(window):
+    freq = window.mean()
+    return freq
+
+def calc_cosegregation(window_a, window_b):
+    return ((window_a == 1) & (window_b == 1)).mean() #fraction of NPs that have both windows
+
+
+def linkage(freq_a, freq_b, freq_ab):
+    return freq_ab - (freq_a * freq_b) #the observed co-segregation minus the expected co-segregation if they were independent
+
+def normalized_linkage(freq_a, freq_b, freq_ab):
+    D = linkage(freq_a, freq_b, freq_ab)
+
+    if D == 0:
+        return 0
+    elif D > 0:
+        dmax = min(freq_a * (1 - freq_b), freq_b * (1 - freq_a))
+    elif D < 0:
+        dmax = min(freq_a * freq_b, (1 - freq_a) * (1 - freq_b))
+    if dmax == 0:
+        return 0
+
+    return D / dmax
+
+def compute_normalized_linkage_matrix(df, np_cols):
+    n = len(df)
+    window_labels = [f"{df.iloc[i]['chrom']}:{df.iloc[i]['start']}-{df.iloc[i]['stop']}" for i in range(n)] #makes labels for the windows based on the chrom, start, and stop columns in the df
+
+
+    norm_linkage_matrix = pd.DataFrame(
+        np.zeros((n, n)),
+        index=window_labels,
+        columns=window_labels
+    )
+
+
+    frequencies = []
+    for i in range(n):
+        window = df.iloc[i][np_cols]
+        frequencies.append(calc_detection_freq(window))
+
+    for i in range(n):
+        for j in range(i, n):
+            window_a = df.iloc[i][np_cols]
+            window_b = df.iloc[j][np_cols]
+
+            freq_a = frequencies[i]
+            freq_b = frequencies[j]
+            freq_ab = calc_cosegregation(window_a, window_b)
+
+            norm_linkage = normalized_linkage(freq_a, freq_b, freq_ab)
+            norm_linkage_matrix.iat[i, j] = norm_linkage
+            norm_linkage_matrix.iat[j, i] = norm_linkage
+
+    return norm_linkage_matrix
+
+############## --- co-segregation functions --- ###############
+
+
 
 

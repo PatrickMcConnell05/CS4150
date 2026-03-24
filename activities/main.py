@@ -166,7 +166,7 @@ desired_feats = [
 ]
 
 feat_percent_df = compute_all_feat_stats(df, feat, best_clusters, desired_feats)
-print(feat_percent_df)
+# print(feat_percent_df)
 
 #computes the average percent for each feature in each cluster, returning a df with the clusters, features, and average percent for each feature in each cluster
 cluster_avg = (
@@ -175,14 +175,14 @@ cluster_avg = (
     .mean()
 )
 
-print(cluster_avg)
+# print(cluster_avg)
 
 cluster_avg_wide = (
     cluster_avg
     .pivot(index="cluster", columns="feature", values="percent")
 )
 
-print(cluster_avg_wide)
+# print(cluster_avg_wide)
 
 
 for cluster_id in cluster_avg_wide.index:
@@ -194,5 +194,28 @@ for cluster_id in cluster_avg_wide.index:
 
 
 
+############## --- co-segregation assignment --- ###############
+
+norm_linkage_matrix = compute_normalized_linkage_matrix(df, np_cols) #computes norm link matrix
+
+os.makedirs("./heatmaps/co-segregation", exist_ok=True)
+save_heatmap(
+    norm_linkage_matrix, 
+    "Normalized Linkage Matrix - Hist1 Region", 
+    "./heatmaps/co-segregation/normalized_linkage.png", 
+    cbar_label = "Normalized Linkage",
+    ticks=[-1, -0.5, 0, 0.5, 1],
+    vmin=-1,
+    vmax=1,
+    xticklabels=False,
+    yticklabels=False
+)
+
+print(norm_linkage_matrix)
 
 
+
+
+
+
+############## --- co-segregation assignment --- ###############
