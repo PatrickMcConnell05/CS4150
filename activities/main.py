@@ -207,8 +207,8 @@ save_heatmap(
     ticks=[-1, -0.5, 0, 0.5, 1],
     vmin=-1,
     vmax=1,
-    xticklabels=False,
-    yticklabels=False
+    xticklabels=True,
+    yticklabels=True
 )
 
 print(norm_linkage_matrix)

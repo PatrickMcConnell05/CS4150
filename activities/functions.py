@@ -516,16 +516,19 @@ def calc_detection_freq(window):
     freq = window.mean()
     return freq
 
+#calculates the co-segregation frequency for two windows (the fraction of NPs that have both windows)
 def calc_cosegregation(window_a, window_b):
     return ((window_a == 1) & (window_b == 1)).mean() #fraction of NPs that have both windows
 
-
+#calculates the difference between ovserved co-segregation and expected co-segregation
 def linkage(freq_a, freq_b, freq_ab):
-    return freq_ab - (freq_a * freq_b) #the observed co-segregation minus the expected co-segregation if they were independent
+    return freq_ab - (freq_a * freq_b) #the observed co-segregation minus the expected co-segregation 
 
+#calculates the normalized linkage for two windows
 def normalized_linkage(freq_a, freq_b, freq_ab):
-    D = linkage(freq_a, freq_b, freq_ab)
+    D = linkage(freq_a, freq_b, freq_ab) #the difference between observed and expected co-segregation
 
+    #dmax is the maximum possible value of D based on the freqs of the two windows
     if D == 0:
         return 0
     elif D > 0:
@@ -539,9 +542,15 @@ def normalized_linkage(freq_a, freq_b, freq_ab):
 
 def compute_normalized_linkage_matrix(df, np_cols):
     n = len(df)
-    window_labels = [f"{df.iloc[i]['chrom']}:{df.iloc[i]['start']}-{df.iloc[i]['stop']}" for i in range(n)] #makes labels for the windows based on the chrom, start, and stop columns in the df
+    
+    #creates the labels for the windows in the format "chr:start-stop"
+    window_labels = (
+        df["chrom"] + ":" +
+        df["start"].astype(str) + "-" +
+        df["stop"].astype(str)
+    ).tolist()
 
-
+    #initializes a dataframe of zeros of size num_windows x num_windows to store the normalized linkage values
     norm_linkage_matrix = pd.DataFrame(
         np.zeros((n, n)),
         index=window_labels,
@@ -549,13 +558,16 @@ def compute_normalized_linkage_matrix(df, np_cols):
     )
 
 
-    frequencies = []
+    frequencies = [] #all of the detection frequencies for each window
+
+    #calculates the freqquencies and populates the frequencies list
     for i in range(n):
         window = df.iloc[i][np_cols]
         frequencies.append(calc_detection_freq(window))
 
+    #loops through all pairs of windows to calculate the normalized linkage and populate the matrix
     for i in range(n):
-        for j in range(i, n):
+        for j in range(i, n): #goes through upper triangle and diagonal, filling in the lower triangle with the same values since it's symmetric
             window_a = df.iloc[i][np_cols]
             window_b = df.iloc[j][np_cols]
 
