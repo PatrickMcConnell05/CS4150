@@ -266,7 +266,7 @@ def save_heatmap(matrix, title, out_path, cbar_label, ticks=None,
     plt.figure(figsize=figsize)
     sns.heatmap(
         matrix,
-        cmap="viridis",
+        cmap="plasma",
         square=True,
         vmin=vmin,
         vmax=vmax,
@@ -517,8 +517,9 @@ def calc_detection_freq(window):
     return freq
 
 #calculates the co-segregation frequency for two windows (the fraction of NPs that have both windows)
-def calc_cosegregation(window_a, window_b):
-    return ((window_a == 1) & (window_b == 1)).mean() #fraction of NPs that have both windows
+def calc_cosegregation(window_a, window_b, np_list):
+    return (((window_a == 1) & (window_b == 1)).sum() / len(np_list))
+    # return ((window_a == 1) & (window_b == 1)).mean() #fraction of NPs that have both windows
 
 #calculates the difference between ovserved co-segregation and expected co-segregation
 def linkage(freq_a, freq_b, freq_ab):
@@ -540,8 +541,9 @@ def normalized_linkage(freq_a, freq_b, freq_ab):
 
     return D / dmax
 
+#builds the normalized linkage matrix
 def compute_normalized_linkage_matrix(df, np_cols):
-    n = len(df)
+    n = len(df) #number of rows/windows in the df
     
     #creates the labels for the windows in the format "chr:start-stop"
     window_labels = (
@@ -553,7 +555,7 @@ def compute_normalized_linkage_matrix(df, np_cols):
     #initializes a dataframe of zeros of size num_windows x num_windows to store the normalized linkage values
     norm_linkage_matrix = pd.DataFrame(
         np.zeros((n, n)),
-        index=window_labels,
+        index=window_labels, 
         columns=window_labels
     )
 
@@ -566,20 +568,25 @@ def compute_normalized_linkage_matrix(df, np_cols):
         frequencies.append(calc_detection_freq(window))
 
     #loops through all pairs of windows to calculate the normalized linkage and populate the matrix
+    x = 0
     for i in range(n):
-        for j in range(i, n): #goes through upper triangle and diagonal, filling in the lower triangle with the same values since it's symmetric
-            window_a = df.iloc[i][np_cols]
-            window_b = df.iloc[j][np_cols]
+        for j in range(i, n):
+            window_a = df.iloc[i][np_cols] #grabs one of the windows as a series of 0s and 1s for each NP
+            window_b = df.iloc[j][np_cols] 
 
             freq_a = frequencies[i]
             freq_b = frequencies[j]
-            freq_ab = calc_cosegregation(window_a, window_b)
+            freq_ab = calc_cosegregation(window_a, window_b, np_cols) #gets co-seg for the pair of windows
 
-            norm_linkage = normalized_linkage(freq_a, freq_b, freq_ab)
-            norm_linkage_matrix.iat[i, j] = norm_linkage
-            norm_linkage_matrix.iat[j, i] = norm_linkage
+            if x < 100:
+                x+=1
+                print(freq_ab)
 
-    return norm_linkage_matrix
+            norm_linkage = normalized_linkage(freq_a, freq_b, freq_ab) #calculates the normalized linkage for the pair of windows
+            norm_linkage_matrix.iat[i, j] = norm_linkage #fills in the upper triangle and diagonal
+            norm_linkage_matrix.iat[j, i] = norm_linkage #fills in the lower triangle with same values
+
+    return norm_linkage_matrix 
 
 ############## --- co-segregation functions --- ###############
 
