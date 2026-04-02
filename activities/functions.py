@@ -578,9 +578,6 @@ def compute_normalized_linkage_matrix(df, np_cols):
             freq_b = frequencies[j]
             freq_ab = calc_cosegregation(window_a, window_b, np_cols) #gets co-seg for the pair of windows
 
-            if x < 100:
-                x+=1
-                print(freq_ab)
 
             norm_linkage = normalized_linkage(freq_a, freq_b, freq_ab) #calculates the normalized linkage for the pair of windows
             norm_linkage_matrix.iat[i, j] = norm_linkage #fills in the upper triangle and diagonal
@@ -588,7 +585,60 @@ def compute_normalized_linkage_matrix(df, np_cols):
 
     return norm_linkage_matrix 
 
+
 ############## --- co-segregation functions --- ###############
+
+
+
+############## --- network functions --- ###############
+
+def create_adj_matrix(df, Q3):
+    n = len(df)
+
+    adj_matrix = pd.DataFrame(
+        np.zeros((n, n)),
+        index=df.index, 
+        columns=df.index
+    )
+
+    for i in range(n):
+        for j in range(i+1,n):
+            if df.iloc[i,j] > Q3:
+                adj_matrix.iloc[i,j] = 1
+                adj_matrix.iloc[j,i] = 1
+    
+    return adj_matrix
+
+def degree_centrality(adj_matrix):
+    n = len(adj_matrix)
+    return (adj_matrix.sum(axis=1) / (n - 1)).sort_values()
+
+
+def print_degree_centrality_stats(dc):
+    print("Average Degree Centrality:", dc.mean())
+    print("Min Degree Centrality:", dc.min())
+    print("Max Degree Centrality:", dc.max())
+    print(dc)
+
+
+def network_graph(adj_matrix, out_path):
+    import pandas as pd
+    import networkx as nx
+    import matplotlib.pyplot as plt
+
+    G = nx.from_pandas_adjacency(adj_matrix)
+    G.name = "Adjacency Graph"
+    print(G)
+    plt.figure(figsize=(12, 12))
+    pos = nx.spring_layout(G, seed=42, k=0.5)
+    nx.draw_networkx(G, pos=pos, with_labels=False, node_size=50, width=0.5)
+
+    plt.title("Network Graph of Genomic Interactions")
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=300, bbox_inches="tight")
+    plt.close()
+
+############## --- network functions --- ###############
 
 
 
