@@ -631,7 +631,7 @@ def network_graph(adj_matrix, out_path):
     print(G)
     plt.figure(figsize=(12, 12))
     pos = nx.spring_layout(G, seed=42, k=0.5)
-    nx.draw_networkx(G, pos=pos, with_labels=False, node_size=50, width=0.5)
+    nx.draw_networkx(G, pos=pos, with_labels=False, font_size=6, node_size=50, width=0.5)
 
     plt.title("Network Graph of Genomic Interactions")
     plt.tight_layout()
