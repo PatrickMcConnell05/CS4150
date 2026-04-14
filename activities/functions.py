@@ -592,6 +592,7 @@ def compute_normalized_linkage_matrix(df, np_cols):
 
 ############## --- network functions --- ###############
 
+#makes the adj matrix, where two windows are connected if their normalized linkage is above the 75th percentile (Q3) of all normalized linkage values
 def create_adj_matrix(df, Q3):
     n = len(df)
 
@@ -609,6 +610,9 @@ def create_adj_matrix(df, Q3):
     
     return adj_matrix
 
+#explain in just a small sentence
+#returms a series of degree centrality values for each node in the graph, calculated as the number of connections divided by the maximum possible connections (n-1)
+#tldr: returns an array of degree centrality values for each node in the graph, where degree centrality is the number of connections a node has divided by the maximum possible connections (n-1)
 def degree_centrality(adj_matrix):
     n = len(adj_matrix)
     return (adj_matrix.sum(axis=1) / (n - 1)).sort_values()
@@ -641,5 +645,78 @@ def network_graph(adj_matrix, out_path):
 ############## --- network functions --- ###############
 
 
+
+
+
+############## --- community detection functions --- ###############
+
+# def single_degree_centrality(adj_matrix, node):
+    
+
+#grabs the top five nodes with the highest degree centrality values and returns them as a series with the node names as the index and the degree centrality values
+def top_five_degree_centrality(dc):
+    return dc.nlargest(5)
+
+#clusters all nodes into one of the five clusters with the highest degree centrality
+def cluster_by_top_degree_centrality(adj_matrix, linkage_matrix, top_nodes):
+    n = len(adj_matrix)
+    clusters = {node: [] for node in top_nodes} #initializes a dictionary with the top nodes as keys and empty lists as values to store the clusters
+
+    for node in adj_matrix.index:
+        if node in top_nodes: #matches the top nodes to their own cluster
+            clusters[node].append(node)
+        else:
+            max_centrality = -1 #starts with a max centrality of -1 to ensure any real centrality will be higher
+            assigned_cluster = None
+
+            for top_node in top_nodes:
+                if adj_matrix.loc[node, top_node] == 1: #if there is a connection
+                    link_strength = linkage_matrix.loc[node, top_node] #gets the normalized linkage value for the connection
+                    if link_strength > max_centrality: #if this connection has a higher centrality than the previous max, update the assigned cluster
+                        max_centrality = link_strength
+                        assigned_cluster = top_node
+
+            if assigned_cluster is not None:
+                clusters[assigned_cluster].append(node)
+
+    return clusters
+
+
+#The size of the community (number of nodes).
+# • The percentage of nodes in the community that contain a hist1 gene.
+# • The percentage of nodes in the community that contain a LAD.
+# • The list of nodes that are in the community
+def print_community_information(clusters, feat):
+    for top_node, cluster_nodes in clusters.items():
+        size = len(cluster_nodes)
+        hist1_count = 0
+        lad_count = 0
+
+        for node in cluster_nodes:
+            if feat.loc[feat["name"] == node, "Hist1"].values[0] == 1:
+                hist1_count += 1
+            if feat.loc[feat["name"] == node, "LAD"].values[0] == 1:
+                lad_count += 1
+
+        hist1_pct = (hist1_count / size) * 100 if size > 0 else 0
+        lad_pct = (lad_count / size) * 100 if size > 0 else 0
+
+        print(f"Community centered on {top_node}:")
+        print(f"Size: {size}")
+        print(f"Percentage with Hist1: {hist1_pct:.2f}%")
+        print(f"Percentage with LAD: {lad_pct:.2f}%")
+        print(f"Nodes in community: {cluster_nodes}\n")
+
+
+
+
+
+
+
+
+
+
+
+############## --- community detection functions --- ###############
 
 
