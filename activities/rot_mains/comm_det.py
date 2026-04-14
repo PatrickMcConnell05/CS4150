@@ -31,3 +31,6 @@ top_five_dc = top_five_degree_centrality(dc) #gets the top 5 nodes with highest 
 clusters = cluster_by_top_degree_centrality(adj_matrix, norm_linkage_matrix, top_five_dc.index)
 print_community_information(clusters, feat)
 
+community_visualization(clusters, adj_matrix, dc)
+community_heatmap(clusters, norm_linkage_matrix)
+

@@ -151,9 +151,13 @@ def sample_valid_centers(norm_dist_matrix: pd.DataFrame, k: int = 3, max_tries: 
 def load_and_filter(path):
     df = pd.read_csv(path, sep="\t")
 
+    # df = df[(df["chrom"] == "chr13") &
+    #         (df["start"] >= 21690000) &
+    #         (df["stop"] <= 24120000)].copy()
+    
     df = df[(df["chrom"] == "chr13") &
-            (df["start"] >= 21690000) &
-            (df["stop"] <= 24120000)].copy()
+            (df["start"] >= 21700000) &
+            (df["stop"] <= 24100000)].copy()
 
     # drops NP columns that have no windows present (all zeros)
     for col in df.columns[3:]:
@@ -613,9 +617,21 @@ def create_adj_matrix(df, Q3):
 #explain in just a small sentence
 #returms a series of degree centrality values for each node in the graph, calculated as the number of connections divided by the maximum possible connections (n-1)
 #tldr: returns an array of degree centrality values for each node in the graph, where degree centrality is the number of connections a node has divided by the maximum possible connections (n-1)
+# def degree_centrality(adj_matrix):
+#     n = len(adj_matrix)
+#     return (adj_matrix.sum(axis=1) / (n - 1)).sort_values() #
+
 def degree_centrality(adj_matrix):
     n = len(adj_matrix)
-    return (adj_matrix.sum(axis=1) / (n - 1)).sort_values()
+    centrality = []
+
+    for i in range(n):
+        degree = adj_matrix.iloc[i].sum() / (n - 1)
+        centrality.append(degree)
+
+    return pd.Series(centrality, index=adj_matrix.index).sort_values()
+
+
 
 
 def print_degree_centrality_stats(dc):
@@ -659,21 +675,20 @@ def top_five_degree_centrality(dc):
 
 #clusters all nodes into one of the five clusters with the highest degree centrality
 def cluster_by_top_degree_centrality(adj_matrix, linkage_matrix, top_nodes):
-    n = len(adj_matrix)
     clusters = {node: [] for node in top_nodes} #initializes a dictionary with the top nodes as keys and empty lists as values to store the clusters
 
     for node in adj_matrix.index:
         if node in top_nodes: #matches the top nodes to their own cluster
             clusters[node].append(node)
         else:
-            max_centrality = -1 #starts with a max centrality of -1 to ensure any real centrality will be higher
+            max_link_strength = -1 #starts with a max centrality of -1 to ensure any real centrality will be higher
             assigned_cluster = None
 
             for top_node in top_nodes:
                 if adj_matrix.loc[node, top_node] == 1: #if there is a connection
                     link_strength = linkage_matrix.loc[node, top_node] #gets the normalized linkage value for the connection
-                    if link_strength > max_centrality: #if this connection has a higher centrality than the previous max, update the assigned cluster
-                        max_centrality = link_strength
+                    if link_strength > max_link_strength: #if this connection has a higher centrality than the previous max, update the assigned cluster
+                        max_link_strength = link_strength
                         assigned_cluster = top_node
 
             if assigned_cluster is not None:
@@ -707,12 +722,84 @@ def print_community_information(clusters, feat):
         print(f"Percentage with Hist1: {hist1_pct:.2f}%")
         print(f"Percentage with LAD: {lad_pct:.2f}%")
         print(f"Nodes in community: {cluster_nodes}\n")
+        
+        
+def community_visualization(clusters, adj_matrix, dc, out_dir="../visualizations"):
+    import os
+    import networkx as nx
+    import matplotlib.pyplot as plt
 
+    os.makedirs(out_dir, exist_ok=True)
 
+    # normalize sizes for visualization
+    min_dc = dc.min()
+    max_dc = dc.max()
 
+    for top_node, cluster_nodes in clusters.items():
+        G = nx.Graph()
 
+        # add nodes
+        for node in cluster_nodes:
+            G.add_node(node)
 
+        # add edges within community
+        for i in range(len(cluster_nodes)):
+            for j in range(i + 1, len(cluster_nodes)):
+                node_a = cluster_nodes[i]
+                node_b = cluster_nodes[j]
 
+                if adj_matrix.loc[node_a, node_b] == 1:
+                    G.add_edge(node_a, node_b)
+
+        plt.figure(figsize=(10, 10))
+        pos = nx.spring_layout(G, seed=42)
+
+        node_colors = []
+        node_sizes = []
+
+        for node in G.nodes():
+            # scale size based on degree centrality
+            if max_dc > min_dc:
+                size = 200 + 800 * (dc[node] - min_dc) / (max_dc - min_dc)
+            else:
+                size = 300  # fallback if all same
+
+            node_sizes.append(size)
+
+            if node == top_node:
+                node_colors.append("red")
+            else:
+                node_colors.append("skyblue")
+
+        nx.draw_networkx(
+            G,
+            pos=pos,
+            with_labels=True,
+            font_size=6,
+            node_color=node_colors,
+            node_size=node_sizes,
+            width=0.8
+        )
+
+        plt.title(f"Community centered on {top_node}")
+        plt.tight_layout()
+
+        safe_name = top_node.replace(":", "_").replace("-", "_")
+        plt.savefig(f"{out_dir}/community_{safe_name}.png", dpi=300, bbox_inches="tight")
+        plt.close()
+
+def community_heatmap(clusters, linkage_matrix):
+    import seaborn as sns
+
+    for top_node, cluster_nodes in clusters.items():
+        if len(cluster_nodes) > 1:
+            sub_matrix = linkage_matrix.loc[cluster_nodes, cluster_nodes]
+            plt.figure(figsize=(8, 6))
+            sns.heatmap(sub_matrix, cmap="plasma", square=True)
+            plt.title(f"Heatmap for Community Centered on {top_node}")
+            plt.tight_layout()
+            plt.savefig(f"../heatmaps/community_{top_node}_heatmap.png", dpi=300, bbox_inches="tight")
+            plt.close()
 
 
 
