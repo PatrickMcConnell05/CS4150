@@ -686,6 +686,7 @@ def cluster_by_top_degree_centrality(adj_matrix, linkage_matrix, top_nodes):
 # • The percentage of nodes in the community that contain a hist1 gene.
 # • The percentage of nodes in the community that contain a LAD.
 # • The list of nodes that are in the community
+# feat 
 def print_community_information(clusters, feat):
     for top_node, cluster_nodes in clusters.items():
         size = len(cluster_nodes)
