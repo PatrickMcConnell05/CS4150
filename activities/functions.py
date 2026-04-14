@@ -555,8 +555,8 @@ def compute_normalized_linkage_matrix(df, np_cols):
     #initializes a dataframe of zeros of size num_windows x num_windows to store the normalized linkage values
     norm_linkage_matrix = pd.DataFrame(
         np.zeros((n, n)),
-        index=window_labels, 
-        columns=window_labels
+            index=window_labels, 
+            columns=window_labels
     )
 
 

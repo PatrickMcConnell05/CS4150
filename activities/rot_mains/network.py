@@ -27,5 +27,5 @@ adj_matrix = create_adj_matrix(norm_linkage_matrix, Q3)
 # print(adj_matrix)
 
 dc = degree_centrality(adj_matrix)
-# print_degree_centrality_stats(dc)
+print_degree_centrality_stats(dc)
 network_graph(adj_matrix, "output.png")
