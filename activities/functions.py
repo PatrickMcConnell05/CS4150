@@ -151,13 +151,13 @@ def sample_valid_centers(norm_dist_matrix: pd.DataFrame, k: int = 3, max_tries: 
 def load_and_filter(path):
     df = pd.read_csv(path, sep="\t")
 
-    # df = df[(df["chrom"] == "chr13") &
-    #         (df["start"] >= 21690000) &
-    #         (df["stop"] <= 24120000)].copy()
-    
     df = df[(df["chrom"] == "chr13") &
-            (df["start"] >= 21700000) &
-            (df["stop"] <= 24100000)].copy()
+            (df["start"] >= 21690000) &
+            (df["stop"] <= 24120000)].copy()
+    
+    # df = df[(df["chrom"] == "chr13") &
+    #         (df["start"] >= 21700000) &
+    #         (df["stop"] <= 24100000)].copy()
 
     # drops NP columns that have no windows present (all zeros)
     for col in df.columns[3:]:
@@ -614,13 +614,9 @@ def create_adj_matrix(df, Q3):
     
     return adj_matrix
 
-#explain in just a small sentence
-#returms a series of degree centrality values for each node in the graph, calculated as the number of connections divided by the maximum possible connections (n-1)
-#tldr: returns an array of degree centrality values for each node in the graph, where degree centrality is the number of connections a node has divided by the maximum possible connections (n-1)
-# def degree_centrality(adj_matrix):
-#     n = len(adj_matrix)
-#     return (adj_matrix.sum(axis=1) / (n - 1)).sort_values() #
 
+#calculates the degree centrality for each node in the adjacency matrix (the fraction of other nodes it is connected to)
+#returns a series of the degree centrality values for each node, sorted in ascending order, with the node names as the index
 def degree_centrality(adj_matrix):
     n = len(adj_matrix)
     centrality = []
@@ -629,7 +625,7 @@ def degree_centrality(adj_matrix):
         degree = adj_matrix.iloc[i].sum() / (n - 1)
         centrality.append(degree)
 
-    return pd.Series(centrality, index=adj_matrix.index).sort_values()
+    return pd.Series(centrality, index=adj_matrix.index).sort_values() 
 
 
 
@@ -664,24 +660,26 @@ def network_graph(adj_matrix, out_path):
 
 
 
-############## --- community detection functions --- ###############
-
-# def single_degree_centrality(adj_matrix, node):
-    
+############## --- community detection functions --- ###############    
 
 #grabs the top five nodes with the highest degree centrality values and returns them as a series with the node names as the index and the degree centrality values
 def top_five_degree_centrality(dc):
-    return dc.nlargest(5)
+    return dc.nlargest(5) 
 
 #clusters all nodes into one of the five clusters with the highest degree centrality
 def cluster_by_top_degree_centrality(adj_matrix, linkage_matrix, top_nodes):
-    clusters = {node: [] for node in top_nodes} #initializes a dictionary with the top nodes as keys and empty lists as values to store the clusters
+    
+    #initalizes a dict to store clusters, keys are the top nodes and values stored in lists. A : {B,C}
+    clusters = {}
+    for node in top_nodes:
+        clusters[node] = [] 
+
 
     for node in adj_matrix.index:
         if node in top_nodes: #matches the top nodes to their own cluster
             clusters[node].append(node)
         else:
-            max_link_strength = -1 #starts with a max centrality of -1 to ensure any real centrality will be higher
+            max_link_strength = -1 #initializes the max link strength to a very low value so that any connection will be stronger
             assigned_cluster = None
 
             for top_node in top_nodes:
@@ -708,14 +706,21 @@ def print_community_information(clusters, feat):
         hist1_count = 0
         lad_count = 0
 
+        #gets the Hist1 and LAD counts for the community
         for node in cluster_nodes:
-            if feat.loc[feat["name"] == node, "Hist1"].values[0] == 1:
+            if feat.loc[feat["name"] == node, "Hist1"].values[0] == 1: #if the node has a hist1 gene, increment the hist1 count for the community
                 hist1_count += 1
-            if feat.loc[feat["name"] == node, "LAD"].values[0] == 1:
+            if feat.loc[feat["name"] == node, "LAD"].values[0] == 1: #if the node has a LAD, increment the LAD count for the community
                 lad_count += 1
 
-        hist1_pct = (hist1_count / size) * 100 if size > 0 else 0
-        lad_pct = (lad_count / size) * 100 if size > 0 else 0
+        if size > 0:
+            hist1_pct = (hist1_count / size) * 100
+        else:
+            hist1_pct = 0
+        if size > 0:
+            lad_pct = (lad_count / size) * 100
+        else:
+            lad_pct = 0
 
         print(f"Community centered on {top_node}:")
         print(f"Size: {size}")
@@ -731,23 +736,25 @@ def community_visualization(clusters, adj_matrix, dc, out_dir="../visualizations
 
     os.makedirs(out_dir, exist_ok=True)
 
-    # normalize sizes for visualization
+    #normalize sizes for visualization
     min_dc = dc.min()
     max_dc = dc.max()
 
-    for top_node, cluster_nodes in clusters.items():
+    #for each community, create a subgraph and visualize it
+    for top_node, cluster_nodes in clusters.items(): 
         G = nx.Graph()
 
-        # add nodes
+        #add nodes
         for node in cluster_nodes:
             G.add_node(node)
 
-        # add edges within community
+        #add edges within community
         for i in range(len(cluster_nodes)):
             for j in range(i + 1, len(cluster_nodes)):
                 node_a = cluster_nodes[i]
                 node_b = cluster_nodes[j]
 
+                #if there is an edge between the two nodes in the adjacency matrix, add it to the graph. Does not do nodes to themselves
                 if adj_matrix.loc[node_a, node_b] == 1:
                     G.add_edge(node_a, node_b)
 
@@ -757,12 +764,13 @@ def community_visualization(clusters, adj_matrix, dc, out_dir="../visualizations
         node_colors = []
         node_sizes = []
 
+        #scale node size based on degree centrality and color the top node red
         for node in G.nodes():
-            # scale size based on degree centrality
+            #scale size based on degree centrality
             if max_dc > min_dc:
                 size = 200 + 800 * (dc[node] - min_dc) / (max_dc - min_dc)
             else:
-                size = 300  # fallback if all same
+                size = 300  #fallback if all same
 
             node_sizes.append(size)
 
@@ -788,18 +796,46 @@ def community_visualization(clusters, adj_matrix, dc, out_dir="../visualizations
         plt.savefig(f"{out_dir}/community_{safe_name}.png", dpi=300, bbox_inches="tight")
         plt.close()
 
-def community_heatmap(clusters, linkage_matrix):
+def community_heatmaps(clusters, adj_matrix, out_dir="../visualizations"):
+    import os
+    import matplotlib.pyplot as plt
     import seaborn as sns
+    import pandas as pd
+
+    os.makedirs(out_dir, exist_ok=True)
 
     for top_node, cluster_nodes in clusters.items():
-        if len(cluster_nodes) > 1:
-            sub_matrix = linkage_matrix.loc[cluster_nodes, cluster_nodes]
-            plt.figure(figsize=(8, 6))
-            sns.heatmap(sub_matrix, cmap="plasma", square=True)
-            plt.title(f"Heatmap for Community Centered on {top_node}")
-            plt.tight_layout()
-            plt.savefig(f"../heatmaps/community_{top_node}_heatmap.png", dpi=300, bbox_inches="tight")
-            plt.close()
+        community_set = set(cluster_nodes)
+
+        # start with a full zero matrix, same size as original graph
+        subgraph_matrix = pd.DataFrame(
+            0,
+            index=adj_matrix.index,
+            columns=adj_matrix.columns
+        )
+
+        # copy over only edges where both nodes are in this community
+        for node_a in cluster_nodes:
+            for node_b in cluster_nodes:
+                subgraph_matrix.loc[node_a, node_b] = adj_matrix.loc[node_a, node_b]
+
+        plt.figure(figsize=(10, 8))
+        sns.heatmap(
+            subgraph_matrix,
+            cmap="binary",
+            vmin=0,
+            vmax=1,
+            xticklabels=False,
+            yticklabels=False,
+            cbar_kws={"label": "Edge Presence"}
+        )
+
+        plt.title(f"Community Heatmap centered on {top_node}")
+        plt.tight_layout()
+
+        safe_name = top_node.replace(":", "_").replace("-", "_")
+        plt.savefig(f"{out_dir}/community_heatmap_{safe_name}.png", dpi=300, bbox_inches="tight")
+        plt.close()
 
 
 
