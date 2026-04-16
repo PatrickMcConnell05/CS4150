@@ -625,7 +625,7 @@ def degree_centrality(adj_matrix):
         degree = adj_matrix.iloc[i].sum() / (n - 1)
         centrality.append(degree)
 
-    return pd.Series(centrality, index=adj_matrix.index).sort_values() 
+    return pd.Series(centrality, index=adj_matrix.index).sort_values() #series with centrality value and node name pairs
 
 
 
@@ -761,16 +761,16 @@ def community_visualization(clusters, adj_matrix, dc, out_dir="../visualizations
         plt.figure(figsize=(10, 10))
         pos = nx.spring_layout(G, seed=42)
 
-        node_colors = []
-        node_sizes = []
+        node_colors = [] #used to display the hub node in red and rest as blue
+        node_sizes = [] #shows scale of degree centrality
 
         #scale node size based on degree centrality and color the top node red
         for node in G.nodes():
             #scale size based on degree centrality
             if max_dc > min_dc:
-                size = 200 + 800 * (dc[node] - min_dc) / (max_dc - min_dc)
+                size = 200 + 800 * (dc[node] - min_dc) / (max_dc - min_dc) #multiplies 800 by the normalized degree centrality (200 to 1000 range)
             else:
-                size = 300  #fallback if all same
+                size = 300  #only enters if all nodes have same centrality
 
             node_sizes.append(size)
 
@@ -792,7 +792,7 @@ def community_visualization(clusters, adj_matrix, dc, out_dir="../visualizations
         plt.title(f"Community centered on {top_node}")
         plt.tight_layout()
 
-        safe_name = top_node.replace(":", "_").replace("-", "_")
+        safe_name = top_node.replace(":", "_").replace("-", "_") #changes format of output file name
         plt.savefig(f"{out_dir}/community_{safe_name}.png", dpi=300, bbox_inches="tight")
         plt.close()
 
@@ -807,14 +807,14 @@ def community_heatmaps(clusters, adj_matrix, out_dir="../visualizations"):
     for top_node, cluster_nodes in clusters.items():
         community_set = set(cluster_nodes)
 
-        # start with a full zero matrix, same size as original graph
+        #start with a full zero matrix, same size as original graph
         subgraph_matrix = pd.DataFrame(
             0,
             index=adj_matrix.index,
             columns=adj_matrix.columns
         )
 
-        # copy over only edges where both nodes are in this community
+        #adds in the edges between nodes in a community, leaving remainder as zeros
         for node_a in cluster_nodes:
             for node_b in cluster_nodes:
                 subgraph_matrix.loc[node_a, node_b] = adj_matrix.loc[node_a, node_b]

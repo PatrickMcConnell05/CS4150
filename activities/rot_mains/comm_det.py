@@ -32,10 +32,13 @@ print(top_five_dc)
 
 
 
-
+#does the clustering
 clusters = cluster_by_top_degree_centrality(adj_matrix, norm_linkage_matrix, top_five_dc.index)
 
 print_community_information(clusters, feat)
 
+#creates the visualizations for the communities
 community_visualization(clusters, adj_matrix, dc)
+
+#creates the heatmaps for the communities
 community_heatmaps(clusters, adj_matrix)
